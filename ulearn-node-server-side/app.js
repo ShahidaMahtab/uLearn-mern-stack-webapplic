@@ -1,124 +1,136 @@
-require('dotenv').config();
-require('express-async-errors');
+require("dotenv").config();
+require("express-async-errors");
 // express
 
-const express = require('express');
+const express = require("express");
 const app = express();
-const server = require('http').createServer(app);
-const io = require('socket.io')(server, { cors: { origin: '*' } });
+const server = require("http").createServer(app);
+const io = require("socket.io")(server, { cors: { origin: "*" } });
 // rest of the packages
-const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
-const fileUpload = require('express-fileupload');
-const rateLimiter = require('express-rate-limit');
-const helmet = require('helmet');
-const xss = require('xss-clean');
-const cors = require('cors');
-const mongoSanitize = require('express-mongo-sanitize');
+const morgan = require("morgan");
+const cookieParser = require("cookie-parser");
+const fileUpload = require("express-fileupload");
+const rateLimiter = require("express-rate-limit");
+const helmet = require("helmet");
+const xss = require("xss-clean");
+const cors = require("cors");
+const mongoSanitize = require("express-mongo-sanitize");
 
-const cloudinary = require('cloudinary').v2;
+const cloudinary = require("cloudinary").v2;
 cloudinary.config({
-	cloud_name: process.env.CLOUD_NAME,
-	api_key: process.env.CLOUD_API_KEY,
-	api_secret: process.env.CLOUD_API_SECRET,
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.CLOUD_API_KEY,
+    api_secret: process.env.CLOUD_API_SECRET,
 });
 
+const Sentry = require("@sentry/node");
+const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+
 // database
-const connectDB = require('./db/connect');
+const connectDB = require("./db/connect");
 // socket
-const socketServer = require('./socket/socket_server');
+const socketServer = require("./socket/socket_server");
 
 //  routers
-const authRouter = require('./routes/authRoutes');
-const userRouter = require('./routes/userRoutes');
-const lessonRouter = require('./routes/lessonRoutes');
-const sectionRouter = require('./routes/sectionRoutes');
-const courseRouter = require('./routes/courseRoutes');
-const reviewRouter = require('./routes/reviewRoutes');
-const uploadRouter = require('./routes/uploadRoutes');
-const categoryRouter = require('./routes/categoryRoutes');
-const topicRouter = require('./routes/topicRoutes');
-const commentRouter = require('./routes/commentRoutes');
-const instructorRouter = require('./routes/instructorRoutes');
-const testimonialRouter = require('./routes/testimonialRoutes');
-const notificationRouter = require('./routes/notificationRoutes');
+const authRouter = require("./routes/authRoutes");
+const userRouter = require("./routes/userRoutes");
+const lessonRouter = require("./routes/lessonRoutes");
+const sectionRouter = require("./routes/sectionRoutes");
+const courseRouter = require("./routes/courseRoutes");
+const reviewRouter = require("./routes/reviewRoutes");
+const uploadRouter = require("./routes/uploadRoutes");
+const categoryRouter = require("./routes/categoryRoutes");
+const topicRouter = require("./routes/topicRoutes");
+const commentRouter = require("./routes/commentRoutes");
+const instructorRouter = require("./routes/instructorRoutes");
+const testimonialRouter = require("./routes/testimonialRoutes");
+const notificationRouter = require("./routes/notificationRoutes");
 
 // this is a list of routers
 // testing
 // another
 // middleware
-const notFoundMiddleware = require('./middleware/not-found');
-const errorHandlerMiddleware = require('./middleware/error-handler');
+const notFoundMiddleware = require("./middleware/not-found");
+const errorHandlerMiddleware = require("./middleware/error-handler");
 
-console.log('origin', process.env.PRODUCTION);
+console.log("origin", process.env.PRODUCTION);
 
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 app.use(
-	rateLimiter({
-		windowMs: 15 * 60 * 1000,
-		max: 60,
-	})
+    rateLimiter({
+        windowMs: 15 * 60 * 1000,
+        max: 60,
+    })
 );
 app.use(helmet());
 app.use(
-	cors({
-		origin: process.env.ORIGIN,
-		credentials: process.env.NODE_ENV === 'production' ? true : false,
-	})
+    cors({
+        origin: process.env.ORIGIN,
+        credentials: process.env.NODE_ENV === "production" ? true : false,
+    })
 );
 app.use(xss());
 app.use(mongoSanitize());
 
-app.use(morgan('tiny'));
+app.use(morgan("tiny"));
 app.use(
-	express.json({
-		limit: '50mb',
-	})
+    express.json({
+        limit: "50mb",
+    })
 );
 app.use(fileUpload({ useTempFiles: true }));
 app.use(cookieParser(process.env.JWT_SECRET));
 
-app.use(express.static('./public'));
+app.use(express.static("./public"));
 app.use(fileUpload());
 
-app.get('/', (req, res) => {
-	console.log(req.cookies);
-	res.send('U Learn');
+app.get("/", (req, res) => {
+    console.log(req.cookies);
+    res.send("U Learn");
 });
-app.get('/api/v1', (req, res) => {
-	console.log(req.signedCookies);
-	res.send('U Learn');
+app.get("/api/v1", (req, res) => {
+    console.log(req.signedCookies);
+    res.send("U Learn");
 });
 
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/users', userRouter);
-app.use('/api/v1/lessons', lessonRouter);
-app.use('/api/v1/sections', sectionRouter);
-app.use('/api/v1/courses', courseRouter);
-app.use('/api/v1/reviews', reviewRouter);
-app.use('/api/v1/images', uploadRouter);
-app.use('/api/v1/categories', categoryRouter);
-app.use('/api/v1/topics', topicRouter);
-app.use('/api/v1/comments', commentRouter);
-app.use('/api/v1/instructors', instructorRouter);
-app.use('/api/v1/testimonials', testimonialRouter);
-app.use('/api/v1/notifications', notificationRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/lessons", lessonRouter);
+app.use("/api/v1/sections", sectionRouter);
+app.use("/api/v1/courses", courseRouter);
+app.use("/api/v1/reviews", reviewRouter);
+app.use("/api/v1/images", uploadRouter);
+app.use("/api/v1/categories", categoryRouter);
+app.use("/api/v1/topics", topicRouter);
+app.use("/api/v1/comments", commentRouter);
+app.use("/api/v1/instructors", instructorRouter);
+app.use("/api/v1/testimonials", testimonialRouter);
+app.use("/api/v1/notifications", notificationRouter);
 
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
+Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [nodeProfilingIntegration()],
+    tracesSampleRate: 1.0,
+});
+// Manually call startProfiler and stopProfiler
+// to profile the code in between
+Sentry.profiler.startProfiler();
+
 const port = process.env.PORT || 5001;
 const start = async () => {
-	try {
-		await connectDB(process.env.MONGO_URI);
-		await socketServer(io);
+    try {
+        await connectDB(process.env.MONGO_URI);
+        await socketServer(io);
 
-		server.listen(port, () =>
-			console.log(`Server is listening on port ${port}...`)
-		);
-	} catch (error) {
-		console.log(error);
-	}
+        server.listen(port, () =>
+            console.log(`Server is listening on port ${port}...`)
+        );
+    } catch (error) {
+        console.log(error);
+    }
 };
 
 start();
